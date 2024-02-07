@@ -1,0 +1,271 @@
+openapi: 3.0.3
+info:
+  title: LeakChef - OpenAPI 3.0
+  description: |-
+    This is the OpenAPI documentation of the LeakChef. A program that fetches leaked credentials from a database and delivers these to requesting clients.
+  contact:
+    email: kristi@staff.identeco.de
+  license:
+    name: MIT
+    url: https://opensource.org/license/mit/
+  version: 0.0.1
+externalDocs:
+  description: Find out more about LeakChef
+  url: https://git.leakchecker.de/kristi/balla-bachelor
+servers:
+  - url: https://localhost:8443
+tags:
+  - name: leak
+    description: Everything about leaked credentials
+  - name: results
+    description: Everything about client feedback regarding processed data leaks
+
+paths:
+  /leak:
+    get:
+      tags:
+        - leak
+      summary: Get the data contained in a leak
+      description: Receive the data found in the next, not yet processed, data leak. A request to this endpoint will yield some identities of the newest leak. You can limit the size of the identities being delivered through the `limit` parameter. To get the next batches, please refer to the endpoint `/leak/leak_id`.
+      security:
+        - api_key: []
+      parameters:
+        - in: query
+          name: filter
+          required: true
+          schema:
+            type: string
+            example: pxS1XL6cdCM+LgfSkzgI3NsWYdi7yPFAGihJXbOllVk=
+          description: The hashed domain name. This will be used to filter the results to those that belong to your domain.
+          allowReserved: false
+        - in: query
+          name: supportes_identifiers
+          required: true
+          schema:
+            type: array
+            items:
+              type: string
+              enum:
+                - EMAIL
+                - PHONE
+          description: The identifiers your client supports. Only these identifiers will be salted and delivered, the rest will be ignored and not sent.
+        - in: query
+          name: limit
+          required: true
+          schema:
+            type: integer
+            example: 100000
+      responses:
+        "200":
+          description: Successful operation. In this case, a list containing all known identities associated with the requested leak are returned. The identifier (i.e. email) is hashed and salted according to our cryptographic procedure described in the documentation. The password is encrypted according to the same procedure. Please revise the different versions of the schema.
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - $ref: "#/components/schemas/Response"
+                  - $ref: "#/components/schemas/LeakIsDoneResponse"
+        "400":
+          description: Invalid Syntax.
+        "401":
+          description: Missing X-API-KEY
+        "403":
+          description: Forbidden. Please check that you provided a valid API-KEY.
+        "404":
+          description: Leak not found.
+        "409":
+          description: A conflict occurred. This is probably due to you not calling the statistics endpoint within X days of receiving the leaks.
+  /leak/{leak_id}:
+    get:
+      tags:
+        - leak
+      summary: Get the data contained in a leak
+      description: Returns the next batch of identities associated with the given `leak_id`.
+      security:
+        - api_key: []
+      parameters:
+        - in: query
+          name: filter
+          required: true
+          schema:
+            type: string
+            example: pxS1XL6cdCM+LgfSkzgI3NsWYdi7yPFAGihJXbOllVk=
+          description: The hashed domain name. This will be used to filter the results to those that belong to your domain.
+          allowReserved: false
+        - in: query
+          name: supportes_identifiers
+          required: true
+          schema:
+            type: array
+            items:
+              type: string
+              enum:
+                - EMAIL
+                - PHONE
+          description: The identifiers your client supports. Only these identifiers will be salted and delivered, the rest will be ignored and not sent.
+        - in: query
+          name: limit
+          required: true
+          schema:
+            type: integer
+            example: 100000
+      responses:
+        "200":
+          description: Successful operation. In this case, a list containing all known identities associated with the requested leak are returned. The identifier (i.e. email) is hashed and salted according to our cryptographic procedure described in the documentation. The password is encrypted according to the same procedure. If you happen to make the same request after having exhausted all identities for the provided leak, the server will tell you so in another response. Please revise the different versions of the schema.
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - $ref: "#/components/schemas/Response"
+                  - $ref: "#/components/schemas/LeakIsDoneResponse"
+        "400":
+          description: Invalid Syntax.
+        "401":
+          description: Missing X-API-KEY
+        "403":
+          description: Forbidden. Please check that you provided a valid API-KEY.
+        "404":
+          description: Leak not found.
+        "409":
+          description: A conflict occurred. This is probably due to you not calling the statistics endpoint within X days of receiving the leaks.
+  /result:
+    post:
+      tags:
+        - results
+      summary: Provide results on the received leak
+      description: Send result regarding number of matches in the sent leak.
+      security:
+        - api_key: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ResultRequest"
+        required: true
+      responses:
+        "200":
+          description: Successful operation.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ResultResponse"
+        "400":
+          description: Invalid Syntax.
+        "403":
+          description: Forbidden. Please check that you provided a valid API-KEY.
+        "404":
+          description: Leak not found.
+components:
+  schemas:
+    Response:
+      type: object
+      properties:
+        code:
+          type: integer
+          example: 200
+        message:
+          type: string
+          example: "Everything is fine"
+        reply:
+          type: object
+          properties:
+            customer_id:
+              type: integer
+              example: 34523
+            leak_id:
+              type: string
+              example: "de5f7839a1b44fcc7c023799b3367c1b"
+            identities:
+              type: array
+              items:
+                type: object
+                properties:
+                  _id:
+                    type: object
+                    properties:
+                      object_id:
+                        type: string
+                        example: "648b7516acc3f92c04deace1"
+                  credentials:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        identifier: 
+                          type: string
+                          example: LhLJylGe34WS/jAcct8yVg==
+                        password: 
+                          type: string
+                          example: H2duQkPGNVTu/xeaVqLuIw==
+    ResultResponse:
+      type: object
+      properties:
+        code:
+          type: integer
+          example: 200
+        message:
+          type: string
+          example: "Everything is fine"
+        reply:
+          type: object
+          properties:
+            NormalReply:
+              type: object
+              properties:
+                customer_id:
+                  type: integer
+                  example: 34523
+                leak_id:
+                  type: string
+                  example: "de5f7839a1b44fcc7c023799b3367c1b"
+                identities:
+                  type: array
+                  example: []
+    LeakIsDoneResponse:
+      type: object
+      properties:
+        code:
+          type: integer
+          example: 200
+        message:
+          type: string
+          example: "All identities for this leak have been received"
+        reply:
+          type: object
+          properties:
+            NormalReply:
+              type: object
+              properties:
+                customer_id:
+                  type: integer
+                  example: 34523
+                leak_id:
+                  type: string
+                  example: "de5f7839a1b44fcc7c023799b3367c1b"
+                identities:
+                  type: array
+                  example: []
+    ResultRequest:
+      type: object
+      properties:
+        leak_id:
+          type: string
+          example: "de5f7839a1b44fcc7c023799b3367c1b"
+        number_of_matches:
+          type: integer
+          example: 100
+        received_identities:
+          type: integer
+          example: 100
+  requestBodies:
+    ResultRequest:
+      description: Result object to wrap the relevant feedback from the local credential checking
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ResultRequest"
+  securitySchemes:
+    api_key:
+      type: http
+      scheme: bearer
+security:
+  - api_key: []

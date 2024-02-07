@@ -1,0 +1,5 @@
+[registries]
+identeco = { index = "git://crates.wg.identeco.de:9418/index" }
+
+[net]
+git-fetch-with-cli = true

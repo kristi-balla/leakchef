@@ -1,0 +1,3 @@
+[workspace]
+
+members = ["server", "lib-client", "demo-client", "fakes"]

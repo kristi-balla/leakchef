@@ -1,0 +1,37 @@
+version: '3.8'
+
+services:
+  database:
+    container_name: database
+    image: mongo:latest
+    ports:
+      - '27017:27017'
+    expose:
+      - 27017
+    volumes:
+      - dbdata6:/data/db
+
+  leakchef:
+    container_name: leakchef
+    build:
+      context: ./server
+      dockerfile: Dockerfile
+    depends_on:
+      - database
+    ports:
+      - 8080:8080
+    env_file:
+      - .env
+
+  proxy:
+    container_name: proxy
+    build:
+      context: ./proxy
+      dockerfile: Dockerfile
+    depends_on:
+      - leakchef
+    ports:
+      - 8443:443
+
+volumes:
+  dbdata6:
